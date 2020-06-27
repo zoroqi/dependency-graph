@@ -92,10 +92,10 @@ type stackNode struct {
 
 func toString(pkg *pkg) *strings.Builder {
 	sb := strings.Builder{}
-	stack := make([]stackNode, 0, 10)
+	stack := make([]*stackNode, 0, 10)
 
 	stackMap := make(map[string]bool)
-	push := func(l stackNode) {
+	push := func(l *stackNode) {
 		stack = append(stack, l)
 		stackMap[l.pkg.String()] = true
 	}
@@ -104,7 +104,7 @@ func toString(pkg *pkg) *strings.Builder {
 		if len(stack) < 0 {
 			return nil
 		}
-		r := &stack[len(stack)-1]
+		r := stack[len(stack)-1]
 		stackMap[r.pkg.String()] = false
 		stack = stack[0 : len(stack)-1]
 		return r
@@ -114,23 +114,23 @@ func toString(pkg *pkg) *strings.Builder {
 		if len(stack) == 0 {
 			return nil
 		}
-		return &stack[len(stack)-1]
+		return stack[len(stack)-1]
 	}
 
 	length := func() int {
 		return len(stack)
 	}
 
-	push(stackNode{
+	push(&stackNode{
 		pkg:   pkg,
 		index: 0,
 	})
 
 	push2 := func(tmp *stackNode) {
 		if stackMap[tmp.pkg.dep[tmp.index].String()] {
-			fmt.Printf("%s* %s:circular\n", levelStr(length()), tmp.pkg.dep[tmp.index].String())
+			fmt.Printf("%s-%s:circular\n", levelStr(length()), tmp.pkg.dep[tmp.index].String())
 		} else {
-			push(stackNode{
+			push(&stackNode{
 				pkg:   tmp.pkg.dep[tmp.index],
 				index: 0,
 			})
