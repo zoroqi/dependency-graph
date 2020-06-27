@@ -156,7 +156,6 @@ func toString(pkg *pkg) *strings.Builder {
 			}
 		}
 	}
-	i++
 	return &sb
 }
 
