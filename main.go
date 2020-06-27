@@ -9,7 +9,11 @@ import (
 
 func main() {
 	graphStr := graph()
-	parseGraph(graphStr)
+	root := parseGraph(graphStr)
+	sb := toString(root)
+	//tree := buildTree(root)
+	//sb := toString2(tree)
+	fmt.Println(sb.String())
 }
 
 type pkg struct {
@@ -23,12 +27,12 @@ func (m pkg) String() string {
 	return m.name + "@" + m.ver
 }
 
-func parseGraph(graph string) {
+func parseGraph(graph string) *pkg {
 	lines := strings.Split(graph, "\n")
 	root := findRoot(lines)
 	if root == "" {
 		fmt.Println("no dependency")
-		return
+		return nil
 	}
 
 	depMapping := make(map[string]*pkg)
@@ -53,8 +57,7 @@ func parseGraph(graph string) {
 		lib.dep = append(lib.dep, depModel)
 	}
 
-	sb := toString(depMapping[root])
-	fmt.Println(sb.String())
+	return depMapping[root]
 }
 
 func findRoot(lines []string) string {
@@ -128,7 +131,7 @@ func toString(pkg *pkg) *strings.Builder {
 
 	push2 := func(tmp *stackNode) {
 		if stackMap[tmp.pkg.dep[tmp.index].String()] {
-			fmt.Printf("%s-%s:circular\n", levelStr(length()), tmp.pkg.dep[tmp.index].String())
+			sb.WriteString(fmt.Sprintf("%s-%s:circular\n", levelStr(length()), tmp.pkg.dep[tmp.index].String()))
 		} else {
 			push(&stackNode{
 				pkg:   tmp.pkg.dep[tmp.index],
@@ -137,10 +140,9 @@ func toString(pkg *pkg) *strings.Builder {
 		}
 		tmp.index++
 	}
-
 	for tmp := top(); tmp != nil; tmp = top() {
 		if tmp.index == 0 {
-			fmt.Printf("%s-%s\n", levelStr(length()-1), tmp.pkg.String())
+			sb.WriteString(fmt.Sprintf("%s-%s\n", levelStr(length()-1), tmp.pkg.String()))
 			if len(tmp.pkg.dep) == 0 {
 				pop()
 			} else {
