@@ -6,7 +6,7 @@ import (
 )
 
 type pkgTreeNode struct {
-	pkg      string
+	name     string
 	version  string
 	parent   *pkgTreeNode
 	dep      []*pkgTreeNode
@@ -14,47 +14,88 @@ type pkgTreeNode struct {
 }
 
 func (m pkgTreeNode) String() string {
-	return m.pkg + "@" + m.version
+	return m.name + "@" + m.version
 }
 
-func toString2(root *pkgTreeNode) *strings.Builder {
+func searchPrint(root *pkgTreeNode, searchName string) *strings.Builder {
 	sb := &strings.Builder{}
-	dfs(root, 0, sb)
+	dfs(root, 0, func(height int, n *pkgTreeNode) {
+		if n.name == searchName {
+			reverseLine(n, sb)
+		}
+	})
 	return sb
 }
 
-func dfs(node *pkgTreeNode, level int, sb *strings.Builder) {
+func reversePrint(root *pkgTreeNode) *strings.Builder {
+	sb := &strings.Builder{}
+	dfs(root, 0, func(height int, n *pkgTreeNode) {
+		if len(n.dep) == 0 {
+			reverseLine(n, sb)
+		}
+	})
+	return sb
+}
+
+func reverseLine(n *pkgTreeNode, sb *strings.Builder) {
+	p := n
+	for p != nil {
+		sb.WriteString(fmt.Sprintf("%s", p.String()))
+		if p.circular {
+			sb.WriteString(fmt.Sprintf(":circular"))
+		}
+		p = p.parent
+		if p != nil {
+			sb.WriteString(fmt.Sprintf(" -> "))
+		}
+	}
+	sb.WriteString("\n")
+}
+
+func treePrint(root *pkgTreeNode) *strings.Builder {
+	sb := &strings.Builder{}
+	dfs(root, 0, func(height int, n *pkgTreeNode) {
+		if n.circular {
+			sb.WriteString(fmt.Sprintf("%s-%s:circular\n", levelStr(height), n.String()))
+		} else {
+			sb.WriteString(fmt.Sprintf("%s-%s\n", levelStr(height), n.String()))
+		}
+	})
+	return sb
+}
+
+func dfs(node *pkgTreeNode, height int, handler func(level int, node *pkgTreeNode)) {
 	if node == nil {
 		return
 	}
-	if node.circular {
-		sb.WriteString(fmt.Sprintf("%s-%s:circular\n", levelStr(level), node.String()))
-	} else {
-		sb.WriteString(fmt.Sprintf("%s-%s\n", levelStr(level), node.String()))
-	}
+	handler(height, node)
 	for _, v := range node.dep {
-		dfs(v, level+1, sb)
+		dfs(v, height+1, handler)
 	}
-
 }
 
-type stackNode2 struct {
+// build space
+func levelStr(level int) string {
+	return strings.Repeat("    |", level)
+}
+
+type stackNode struct {
 	pkg   *pkg
 	index int // index in traversal
 	node  *pkgTreeNode
 }
 
-func buildTree(pkg *pkg) *pkgTreeNode {
-	stack := make([]*stackNode2, 0, 10)
+func newTree(pkg *pkg) *pkgTreeNode {
+	stack := make([]*stackNode, 0, 10)
 
 	stackMap := make(map[string]bool)
 
-	push := func(l *stackNode2) {
+	push := func(l *stackNode) {
 		stack = append(stack, l)
 		stackMap[l.pkg.String()] = true
 	}
 
-	pop := func() *stackNode2 {
+	pop := func() *stackNode {
 		if len(stack) < 0 {
 			return nil
 		}
@@ -64,14 +105,14 @@ func buildTree(pkg *pkg) *pkgTreeNode {
 		return r
 	}
 
-	top := func() *stackNode2 {
+	top := func() *stackNode {
 		if len(stack) == 0 {
 			return nil
 		}
 		return stack[len(stack)-1]
 	}
 
-	push(&stackNode2{
+	push(&stackNode{
 		pkg:   pkg,
 		index: 0,
 		node:  newNode(pkg),
@@ -79,18 +120,18 @@ func buildTree(pkg *pkg) *pkgTreeNode {
 
 	root := top().node
 
-	push2 := func(tmp *stackNode2) {
+	push2 := func(tmp *stackNode) {
 		n := newNode(tmp.pkg.dep[tmp.index])
+		n.parent = tmp.node
 		if stackMap[tmp.pkg.dep[tmp.index].String()] {
 			n.circular = true
 		} else {
-			push(&stackNode2{
+			push(&stackNode{
 				pkg:   tmp.pkg.dep[tmp.index],
 				index: 0,
 				node:  n,
 			})
 		}
-		n.parent = tmp.node
 		tmp.node.dep = append(tmp.node.dep, n)
 		tmp.index++
 	}
@@ -115,7 +156,7 @@ func buildTree(pkg *pkg) *pkgTreeNode {
 
 func newNode(pkg *pkg) *pkgTreeNode {
 	return &pkgTreeNode{
-		pkg:      pkg.name,
+		name:     pkg.name,
 		version:  pkg.ver,
 		parent:   nil,
 		dep:      nil,
