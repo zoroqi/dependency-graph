@@ -37,18 +37,4 @@ tag:v1.0.0
     github.com/xxx/xxx -> github.com/xxx/xxx -> github.com/xxx/xxx -> github.com/xxx/xxx -> github.com/xxx/xxx  
     github.com/xxx/xxx -> github.com/xxx/xxx -> github.com/xxx/xxx -> github.com/xxx/xxx -> github.com/xxx/xxx -> github.com/xxx/xxx  
     ```
-2. json输出, 方便展示和使用json工具进行查看
-    ```
-    [
-        "github.com/xxx/xxx" : [
-            "github.com/xxx/xxx":[
-                "github.com/xxx/xxx",
-                "github.com/xxx/xxx",
-            ],
-            "github.com/xxx/xxx":[
-                "github.com/xxx/xxx",
-                "github.com/xxx/xxx",
-            ]
-    ]
-    ```
-3. 提供查找方案, 指定包打印输出相应路径
+2. 提供查找方案, 指定包打印输出相应路径, 反向输出
