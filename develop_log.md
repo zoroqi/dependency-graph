@@ -38,3 +38,7 @@ tag:v1.0.0
     github.com/xxx/xxx -> github.com/xxx/xxx -> github.com/xxx/xxx -> github.com/xxx/xxx -> github.com/xxx/xxx -> github.com/xxx/xxx  
     ```
 2. 提供查找方案, 指定包打印输出相应路径, 反向输出
+
+## 2020-07-07
+
+调整参数关系和输出格式. 搜索可以采用树形打印

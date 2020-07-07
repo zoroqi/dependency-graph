@@ -17,21 +17,23 @@ func (m pkgTreeNode) String() string {
 	return m.name + "@" + m.version
 }
 
-func searchPrint(root *pkgTreeNode, searchName string) *strings.Builder {
+type layout func(*pkgTreeNode, *strings.Builder)
+
+func searchPrint(root *pkgTreeNode, searchName string, lo layout) *strings.Builder {
 	sb := &strings.Builder{}
 	dfs(root, 0, func(height int, n *pkgTreeNode) {
 		if n.name == searchName {
-			reverseLine(n, sb)
+			lo(n, sb)
 		}
 	})
 	return sb
 }
 
-func reversePrint(root *pkgTreeNode) *strings.Builder {
+func reversePrint(root *pkgTreeNode, lo layout) *strings.Builder {
 	sb := &strings.Builder{}
 	dfs(root, 0, func(height int, n *pkgTreeNode) {
 		if len(n.dep) == 0 {
-			reverseLine(n, sb)
+			lo(n, sb)
 		}
 	})
 	return sb
@@ -47,6 +49,23 @@ func reverseLine(n *pkgTreeNode, sb *strings.Builder) {
 		p = p.parent
 		if p != nil {
 			sb.WriteString(fmt.Sprintf(" -> "))
+		}
+	}
+	sb.WriteString("\n")
+}
+
+func reverseTree(n *pkgTreeNode, sb *strings.Builder) {
+	p := n
+	h := 0
+	for p != nil {
+		sb.WriteString(fmt.Sprintf("%s-%s", levelStr(h), p.String()))
+		h++
+		if p.circular {
+			sb.WriteString(fmt.Sprintf(":circular"))
+		}
+		p = p.parent
+		if p != nil {
+			sb.WriteString("\n")
 		}
 	}
 	sb.WriteString("\n")

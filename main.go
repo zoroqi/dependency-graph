@@ -10,9 +10,8 @@ import (
 
 func main() {
 	p := flag.String("p", "", `default: tree print
-r: reverse print
-s: search print`)
-	s := flag.String("s", "", "search name name")
+r: reverse print`)
+	s := flag.String("s", "", "search pkg name")
 	flag.Parse()
 	graphStr := graph()
 	root := parseGraph(graphStr)
@@ -22,13 +21,18 @@ s: search print`)
 	}
 	tree := newTree(root)
 	var sb *strings.Builder
-	switch *p {
-	case "s":
-		sb = searchPrint(tree, strings.TrimSpace(*s))
-	case "r":
-		sb = reversePrint(tree)
-	default:
-		sb = treePrint(tree)
+	if strings.TrimSpace(*s) != "" {
+		if *p == "r" {
+			sb = searchPrint(tree, strings.TrimSpace(*s), reverseLine)
+		} else {
+			sb = searchPrint(tree, strings.TrimSpace(*s), reverseTree)
+		}
+	} else {
+		if *p == "r" {
+			sb = reversePrint(tree, reverseLine)
+		} else {
+			sb = treePrint(tree)
+		}
 	}
 	fmt.Println(sb.String())
 }
