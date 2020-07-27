@@ -11,6 +11,7 @@ type pkgTreeNode struct {
 	parent   *pkgTreeNode
 	dep      []*pkgTreeNode
 	circular bool
+	height   int
 }
 
 func (m pkgTreeNode) String() string {
@@ -71,9 +72,26 @@ func reverseTree(n *pkgTreeNode, sb *strings.Builder) {
 	sb.WriteString("\n")
 }
 
-func treePrint(root *pkgTreeNode) *strings.Builder {
+func wholeTree(node *pkgTreeNode, sb *strings.Builder) {
+	sbParent := ""
+	p := node.parent
+	for p != nil {
+		if p.circular {
+			sbParent = fmt.Sprintf("%s-%s:circular\n", levelStr(p.height), p) + sbParent
+		} else {
+			sbParent = fmt.Sprintf("%s-%s\n", levelStr(p.height), p) + sbParent
+		}
+		p = p.parent
+	}
+	sbDependency := treePrint(node, node.height)
+	sb.WriteString(sbParent)
+	sb.WriteString(sbDependency.String())
+	sb.WriteString("\n")
+}
+
+func treePrint(root *pkgTreeNode, height int) *strings.Builder {
 	sb := &strings.Builder{}
-	dfs(root, 0, func(height int, n *pkgTreeNode) {
+	dfs(root, height, func(height int, n *pkgTreeNode) {
 		if n.circular {
 			sb.WriteString(fmt.Sprintf("%s-%s:circular\n", levelStr(height), n.String()))
 		} else {
@@ -142,6 +160,7 @@ func newTree(pkg *pkg) *pkgTreeNode {
 	push2 := func(tmp *stackNode) {
 		n := newNode(tmp.pkg.dep[tmp.index])
 		n.parent = tmp.node
+		n.height = tmp.node.height + 1
 		if stackMap[tmp.pkg.dep[tmp.index].String()] {
 			n.circular = true
 		} else {
@@ -180,5 +199,6 @@ func newNode(pkg *pkg) *pkgTreeNode {
 		parent:   nil,
 		dep:      nil,
 		circular: false,
+		height:   0,
 	}
 }

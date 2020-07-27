@@ -10,7 +10,10 @@ import (
 
 func main() {
 	p := flag.String("p", "", `default: tree print
-r: reverse print`)
+rl: reverse line print
+rt: reverse tree print
+wt: whole tree print
+`)
 	s := flag.String("s", "", "search pkg name")
 	flag.Parse()
 	graphStr := graph()
@@ -22,16 +25,19 @@ r: reverse print`)
 	tree := newTree(root)
 	var sb *strings.Builder
 	if strings.TrimSpace(*s) != "" {
-		if *p == "r" {
+		switch *p {
+		case "rl":
 			sb = searchPrint(tree, strings.TrimSpace(*s), reverseLine)
-		} else {
+		case "wt":
+			sb = searchPrint(tree, strings.TrimSpace(*s), wholeTree)
+		default:
 			sb = searchPrint(tree, strings.TrimSpace(*s), reverseTree)
 		}
 	} else {
-		if *p == "r" {
+		if *p == "rl" {
 			sb = reversePrint(tree, reverseLine)
 		} else {
-			sb = treePrint(tree)
+			sb = treePrint(tree, 0)
 		}
 	}
 	fmt.Println(sb.String())
