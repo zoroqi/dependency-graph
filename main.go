@@ -8,6 +8,21 @@ import (
 	"strings"
 )
 
+type exclude map[string]bool
+
+func (e exclude) String() string {
+	s := ""
+	for k := range e {
+		s += k
+	}
+	return s
+}
+
+func (e exclude) Set(s string) error {
+	e[s] = true
+	return nil
+}
+
 func main() {
 	p := flag.String("p", "", `default: tree print
 rl: reverse line print
@@ -15,6 +30,14 @@ rt: reverse tree print
 wt: whole tree print
 `)
 	s := flag.String("s", "", "search pkg name")
+	level := flag.Int("l", 0, "max level")
+	var exPkg exclude
+	exPkg = make(map[string]bool)
+	flag.Var(&exPkg, "ex", "exclude package")
+	var exPre exclude
+	exPre = make(map[string]bool)
+	flag.Var(&exPre, "expre", "exclude package, prefix match")
+
 	flag.Parse()
 	graphStr := graph()
 	root := parseGraph(graphStr)
@@ -23,24 +46,40 @@ wt: whole tree print
 		return
 	}
 	tree := newTree(root)
-	var sb *strings.Builder
-	if strings.TrimSpace(*s) != "" {
-		switch *p {
-		case "rl":
-			sb = searchPrint(tree, strings.TrimSpace(*s), reverseLine)
-		case "wt":
-			sb = searchPrint(tree, strings.TrimSpace(*s), wholeTree)
-		default:
-			sb = searchPrint(tree, strings.TrimSpace(*s), reverseTree)
-		}
-	} else {
-		if *p == "rl" {
-			sb = reversePrint(tree, reverseLine)
-		} else {
-			sb = treePrint(tree, 0)
-		}
+
+	match := compoundedMatch(buildMath(*s, *level, exPkg, exPre)...)
+
+	var sh stringHandler
+	switch *p {
+	case "rt":
+		sh = reverseLevelString
+	case "rl":
+		sh = reverseLineString
+	case "wt":
+		sh = wholeLevelString(compoundedMatch(buildMath("", *level, exPkg, exPre)...))
+	default:
+		sh = levelString
 	}
-	fmt.Println(sb.String())
+
+	str := treeString(tree, 0, match, sh)
+	fmt.Println(str)
+}
+
+func buildMath(s string, level int, exPkg exclude, exPre exclude) []filterHandler {
+	matches := make([]filterHandler, 0)
+	if strings.TrimSpace(s) != "" {
+		matches = append(matches, searchPackage(strings.TrimSpace(s)))
+	}
+	if level > 0 {
+		matches = append(matches, maxLevelFilter(level))
+	}
+	if len(exPkg) > 0 {
+		matches = append(matches, excludePackage(exPkg))
+	}
+	if len(exPre) > 0 {
+		matches = append(matches, excludePrefixPackage(exPre))
+	}
+	return matches
 }
 
 type pkg struct {

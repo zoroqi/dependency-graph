@@ -35,12 +35,3 @@ github.com/xxx/xxx.v2@v2.0.0 就是合规的
 
 [测试项目snake](https://github.com/1024casts/snake), 代码不多依赖不少.
 
-## 一些问题
-
-1. 存在循环依赖
-    ```
-    这两个包就是互相依赖, 不清楚作者为啥要这样写. 做兼容吗?
-    github.com/ugorji/go/codec
-    github.com/ugorji/go
-    ```
-2. 重复依赖导致输出过长

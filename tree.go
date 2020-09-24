@@ -18,99 +18,6 @@ func (m pkgTreeNode) String() string {
 	return m.name + "@" + m.version
 }
 
-type layout func(*pkgTreeNode, *strings.Builder)
-
-func searchPrint(root *pkgTreeNode, searchName string, lo layout) *strings.Builder {
-	sb := &strings.Builder{}
-	dfs(root, 0, func(height int, n *pkgTreeNode) {
-		if n.name == searchName {
-			lo(n, sb)
-		}
-	})
-	return sb
-}
-
-func reversePrint(root *pkgTreeNode, lo layout) *strings.Builder {
-	sb := &strings.Builder{}
-	dfs(root, 0, func(height int, n *pkgTreeNode) {
-		if len(n.dep) == 0 {
-			lo(n, sb)
-		}
-	})
-	return sb
-}
-
-func reverseLine(n *pkgTreeNode, sb *strings.Builder) {
-	p := n
-	for p != nil {
-		sb.WriteString(fmt.Sprintf("%s", p.String()))
-		if p.circular {
-			sb.WriteString(fmt.Sprintf(":circular"))
-		}
-		p = p.parent
-		if p != nil {
-			sb.WriteString(fmt.Sprintf(" -> "))
-		}
-	}
-	sb.WriteString("\n")
-}
-
-func reverseTree(n *pkgTreeNode, sb *strings.Builder) {
-	p := n
-	h := 0
-	for p != nil {
-		sb.WriteString(fmt.Sprintf("%s-%s", levelStr(h), p.String()))
-		h++
-		if p.circular {
-			sb.WriteString(fmt.Sprintf(":circular"))
-		}
-		p = p.parent
-		if p != nil {
-			sb.WriteString("\n")
-		}
-	}
-	sb.WriteString("\n")
-}
-
-func wholeTree(node *pkgTreeNode, sb *strings.Builder) {
-	sbParent := ""
-	p := node.parent
-	for p != nil {
-		if p.circular {
-			sbParent = fmt.Sprintf("%s-%s:circular\n", levelStr(p.height), p) + sbParent
-		} else {
-			sbParent = fmt.Sprintf("%s-%s\n", levelStr(p.height), p) + sbParent
-		}
-		p = p.parent
-	}
-	sbDependency := treePrint(node, node.height)
-	sb.WriteString(sbParent)
-	sb.WriteString(sbDependency.String())
-	sb.WriteString("\n")
-}
-
-func treePrint(root *pkgTreeNode, height int) *strings.Builder {
-	sb := &strings.Builder{}
-	dfs(root, height, func(height int, n *pkgTreeNode) {
-		if n.circular {
-			sb.WriteString(fmt.Sprintf("%s-%s:circular\n", levelStr(height), n.String()))
-		} else {
-			sb.WriteString(fmt.Sprintf("%s-%s\n", levelStr(height), n.String()))
-		}
-	})
-	return sb
-}
-
-func dfs(node *pkgTreeNode, height int, handler func(level int, node *pkgTreeNode)) {
-	if node == nil {
-		return
-	}
-	handler(height, node)
-	for _, v := range node.dep {
-		dfs(v, height+1, handler)
-	}
-}
-
 // build space
 func levelStr(level int) string {
 	return strings.Repeat("    |", level)
@@ -200,5 +107,133 @@ func newNode(pkg *pkg) *pkgTreeNode {
 		dep:      nil,
 		circular: false,
 		height:   0,
+	}
+}
+
+type filterHandler func(level int, node *pkgTreeNode) (isPrint bool, isGoing bool)
+
+type stringHandler func(level int, node *pkgTreeNode, sb *strings.Builder)
+
+func maxLevelFilter(max int) filterHandler {
+	return func(level int, node *pkgTreeNode) (bool, bool) {
+		return true, level < max
+	}
+}
+
+func excludePackage(p map[string]bool) filterHandler {
+	return func(level int, node *pkgTreeNode) (bool, bool) {
+		return true, !p[node.name]
+	}
+}
+
+func excludePrefixPackage(p map[string]bool) filterHandler {
+	return func(level int, node *pkgTreeNode) (bool, bool) {
+		for k := range p {
+			if strings.HasPrefix(node.name, k) {
+				return true, false
+			}
+		}
+		return true, true
+	}
+}
+
+func searchPackage(p string) filterHandler {
+	return func(level int, node *pkgTreeNode) (bool, bool) {
+		return p == node.name, true
+	}
+}
+
+func compoundedMatch(filters ...filterHandler) filterHandler {
+	return func(level int, node *pkgTreeNode) (bool, bool) {
+		p, s := true, true
+		for _, m := range filters {
+			p1, s1 := m(level, node)
+			p = p && p1
+			s = s && s1
+		}
+		return p, s
+	}
+}
+
+func levelString(level int, n *pkgTreeNode, sb *strings.Builder) () {
+	if n.circular {
+		sb.WriteString(fmt.Sprintf("%s-%s:circular\n", levelStr(level), n.String()))
+	} else {
+		sb.WriteString(fmt.Sprintf("%s-%s\n", levelStr(level), n.String()))
+	}
+}
+
+func reverseLevelString(level int, n *pkgTreeNode, sb *strings.Builder) {
+	p := n
+	h := 0
+	for p != nil {
+		sb.WriteString(fmt.Sprintf("%s-%s", levelStr(h), p.String()))
+		h++
+		if p.circular {
+			sb.WriteString(fmt.Sprintf(":circular"))
+		}
+		p = p.parent
+		if p != nil {
+			sb.WriteString("\n")
+		}
+	}
+	sb.WriteString("\n")
+}
+
+func reverseLineString(level int, n *pkgTreeNode, sb *strings.Builder) {
+	p := n
+	for p != nil {
+		sb.WriteString(fmt.Sprintf("%s", p.String()))
+		if p.circular {
+			sb.WriteString(fmt.Sprintf(":circular"))
+		}
+		p = p.parent
+		if p != nil {
+			sb.WriteString(fmt.Sprintf(" -> "))
+		}
+	}
+	sb.WriteString("\n")
+}
+
+func wholeLevelString(match filterHandler) stringHandler {
+	return func(level int, node *pkgTreeNode, sb *strings.Builder) {
+		sbParent := ""
+		p := node.parent
+		for p != nil {
+			if p.circular {
+				sbParent = fmt.Sprintf("%s-%s:circular\n", levelStr(p.height), p) + sbParent
+			} else {
+				sbParent = fmt.Sprintf("%s-%s\n", levelStr(p.height), p) + sbParent
+			}
+			p = p.parent
+		}
+		sbDependency := treeString(node, node.height, match, levelString)
+		sb.WriteString(sbParent)
+		sb.WriteString(sbDependency)
+		sb.WriteString("\n")
+	}
+}
+
+func treeString(root *pkgTreeNode, level int, match filterHandler, sh stringHandler) string {
+	sb := strings.Builder{}
+	dfs(root, level, func(level int, node *pkgTreeNode) bool {
+		p, g := match(level, node)
+		if p {
+			sh(level, node, &sb)
+		}
+		return g
+	})
+	return sb.String()
+}
+
+func dfs(node *pkgTreeNode, level int, handler func(level int, node *pkgTreeNode) (isGoing bool)) {
+	if node == nil {
+		return
+	}
+	if !handler(level, node) {
+		return
+	}
+	for _, v := range node.dep {
+		dfs(v, level+1, handler)
 	}
 }
