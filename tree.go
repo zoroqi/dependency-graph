@@ -137,6 +137,19 @@ func excludePrefixPackage(p map[string]bool) filterHandler {
 	}
 }
 
+func excludeErrVersion(p []*pkg) filterHandler {
+	m := make(map[string]bool)
+	for _, r := range p {
+		m[newNode(r).String()] = true
+	}
+	return func(level int, node *pkgTreeNode) (bool, bool) {
+		if m[node.String()] {
+			return true, true
+		}
+		return false, false
+	}
+}
+
 func searchPackage(p string) filterHandler {
 	return func(level int, node *pkgTreeNode) (bool, bool) {
 		return p == node.name, true
@@ -155,7 +168,10 @@ func compoundedMatch(filters ...filterHandler) filterHandler {
 	}
 }
 
-func levelString(level int, n *pkgTreeNode, sb *strings.Builder) () {
+// a
+// |-b
+// 	 |-c
+func levelString(level int, n *pkgTreeNode, sb *strings.Builder) {
 	if n.circular {
 		sb.WriteString(fmt.Sprintf("%s-%s:circular\n", levelStr(level), n.String()))
 	} else {
@@ -163,6 +179,9 @@ func levelString(level int, n *pkgTreeNode, sb *strings.Builder) () {
 	}
 }
 
+// c
+// |-b
+//   |-a
 func reverseLevelString(level int, n *pkgTreeNode, sb *strings.Builder) {
 	p := n
 	h := 0
@@ -180,6 +199,7 @@ func reverseLevelString(level int, n *pkgTreeNode, sb *strings.Builder) {
 	sb.WriteString("\n")
 }
 
+// c -> b -> a
 func reverseLineString(level int, n *pkgTreeNode, sb *strings.Builder) {
 	p := n
 	for p != nil {
@@ -195,6 +215,12 @@ func reverseLineString(level int, n *pkgTreeNode, sb *strings.Builder) {
 	sb.WriteString("\n")
 }
 
+// a
+// |-b
+// 	 |-c
+// a
+// |-d
+// 	 |-e
 func wholeLevelString(match filterHandler) stringHandler {
 	return func(level int, node *pkgTreeNode, sb *strings.Builder) {
 		sbParent := ""
@@ -224,6 +250,51 @@ func treeString(root *pkgTreeNode, level int, match filterHandler, sh stringHand
 		return g
 	})
 	return sb.String()
+}
+
+func dotString(actualDepend []*pkg) stringHandler {
+	index := make(map[string]int)
+	repeat := make(map[string]bool)
+	increment := -1
+	first := true
+	depend := make(map[string]bool)
+	for _, r := range actualDepend {
+		depend[newNode(r).String()] = true
+	}
+
+	nodeStmt := func(node *pkgTreeNode, sb *strings.Builder) {
+		i, exist := index[node.String()]
+		if !exist {
+			increment++
+			i = increment
+			index[node.String()] = i
+			if depend[node.String()] {
+				sb.WriteString(fmt.Sprintf("%d [label=\"%s\" style=\"filled\"]\n", i, node.String()))
+			} else {
+				sb.WriteString(fmt.Sprintf("%d [label=\"%s\"]\n", i, node.String()))
+			}
+		}
+	}
+
+	return func(level int, node *pkgTreeNode, sb *strings.Builder) {
+		if first {
+			first = false
+			sb.WriteString("digraph godeps {\n")
+			for _, l := range actualDepend {
+				nodeStmt(newNode(l), sb)
+			}
+		}
+		nodeStmt(node, sb)
+		i := index[node.String()]
+		if node.parent != nil {
+			pi := index[node.parent.String()]
+			ss := fmt.Sprintf("%d -> %d;\n", pi, i)
+			if !repeat[ss] {
+				sb.WriteString(ss)
+				repeat[ss] = true
+			}
+		}
+	}
 }
 
 func dfs(node *pkgTreeNode, level int, handler func(level int, node *pkgTreeNode) (isGoing bool)) {

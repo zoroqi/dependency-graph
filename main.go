@@ -28,6 +28,7 @@ func main() {
 rl: reverse line print
 rt: reverse tree print
 wt: whole tree print
+dot: graphviz print, xxx | dot -Tsvg -o test.svg 
 `)
 	s := flag.String("s", "", "search pkg name")
 	level := flag.Int("l", 0, "max level")
@@ -37,6 +38,7 @@ wt: whole tree print
 	var exPre exclude
 	exPre = make(map[string]bool)
 	flag.Var(&exPre, "expre", "exclude package, prefix match")
+	list := flag.Bool("list", false, "filter the package in the 'list -m all' result")
 
 	flag.Parse()
 	graphStr := graph()
@@ -46,8 +48,13 @@ wt: whole tree print
 		return
 	}
 	tree := newTree(root)
+	var actualDepend []*pkg
+	if *list {
+		str := listall()
+		actualDepend = parseListAll(str)
+	}
 
-	match := compoundedMatch(buildMath(*s, *level, exPkg, exPre)...)
+	match := compoundedMatch(buildMath(*s, *level, exPkg, exPre, actualDepend)...)
 
 	var sh stringHandler
 	switch *p {
@@ -56,16 +63,23 @@ wt: whole tree print
 	case "rl":
 		sh = reverseLineString
 	case "wt":
-		sh = wholeLevelString(compoundedMatch(buildMath("", *level, exPkg, exPre)...))
+		sh = wholeLevelString(compoundedMatch(buildMath("", *level, exPkg, exPre, actualDepend)...))
+	case "dot":
+		str := listall()
+		actualDepend = parseListAll(str)
+		sh = dotString(actualDepend)
 	default:
 		sh = levelString
 	}
 
 	str := treeString(tree, 0, match, sh)
+	if *p == "dot" {
+		str += "}"
+	}
 	fmt.Println(str)
 }
 
-func buildMath(s string, level int, exPkg exclude, exPre exclude) []filterHandler {
+func buildMath(s string, level int, exPkg exclude, exPre exclude, list []*pkg) []filterHandler {
 	matches := make([]filterHandler, 0)
 	if strings.TrimSpace(s) != "" {
 		matches = append(matches, searchPackage(strings.TrimSpace(s)))
@@ -78,6 +92,9 @@ func buildMath(s string, level int, exPkg exclude, exPre exclude) []filterHandle
 	}
 	if len(exPre) > 0 {
 		matches = append(matches, excludePrefixPackage(exPre))
+	}
+	if len(list) > 0 {
+		matches = append(matches, excludeErrVersion(list))
 	}
 	return matches
 }
@@ -125,6 +142,33 @@ func parseGraph(graph string) *pkg {
 	return depMapping[root]
 }
 
+func parseListAll(list string) []*pkg {
+	lines := strings.Split(list, "\n")
+	root := findRoot(lines)
+	if root == "" {
+		return nil
+	}
+	r := make([]*pkg, 0, len(lines))
+	for _, line := range lines {
+		if "" == line {
+			continue
+		}
+		ss := strings.SplitN(line, " ", 2)
+		lib := ss[0]
+		version := ""
+		incompatible := false
+		if len(ss) > 1 {
+			version = ss[1]
+			if strings.HasSuffix(version, "+incompatible") {
+				incompatible = true
+				version = version[:len(version)-13]
+			}
+		}
+		r = append(r, &pkg{name: strings.TrimSpace(lib), ver: strings.TrimSpace(version), incompatible: incompatible})
+	}
+	return r
+}
+
 func findRoot(lines []string) string {
 	for _, l := range lines {
 		if l != "" {
@@ -155,6 +199,21 @@ func graph() string {
 		os.Exit(1)
 	}
 	cmd := exec.Command("go", "mod", "graph")
+	resultBytes, err := cmd.Output()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	return string(resultBytes)
+}
+
+// execute `list -m all`
+func listall() string {
+	if _, err := os.Stat("./go.mod"); os.IsNotExist(err) {
+		fmt.Println("cannot find go.mod")
+		os.Exit(1)
+	}
+	cmd := exec.Command("go", "list", "-m", "all")
 	resultBytes, err := cmd.Output()
 	if err != nil {
 		fmt.Println(err)
