@@ -41,15 +41,21 @@ dependency-graph
  a
  |-b
    |-c
+ |-d
+   |-e
 ```
 * rl
 ```
 c -> b -> a
+e -> d -> a
 ```
 * rt
 ```
  c
  |-b
+   |-a
+ e
+ |-d
    |-a
 ```
 * wt

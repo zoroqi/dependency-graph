@@ -48,6 +48,7 @@ dot: graphviz print, xxx | dot -Tsvg -o test.svg
 		return
 	}
 	tree := newTree(root)
+
 	var actualDepend []*pkg
 	if *list {
 		str := listall()
@@ -71,12 +72,11 @@ dot: graphviz print, xxx | dot -Tsvg -o test.svg
 	default:
 		sh = levelString
 	}
-
-	str := treeString(tree, 0, match, sh)
+	out := os.Stdout
+	treeString(tree, 0, match, sh, out)
 	if *p == "dot" {
-		str += "}"
+		out.WriteString("}")
 	}
-	fmt.Println(str)
 }
 
 func buildMath(s string, level int, exPkg exclude, exPre exclude, list []*pkg) []filterHandler {
