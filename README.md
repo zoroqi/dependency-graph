@@ -33,6 +33,9 @@ dependency-graph
 
   -s string
     	search pkg name, 只打印固定包
+  -fast 
+        fast mode, Reduce duplicate pkg to solve the problem of too large dependency and unable to output. P.S. #5
+           进行快速树构建, 可以解决依赖过大导致无法输出的问题. 但输出可能会出现部分错误. 详见 #5 
 ```
 
 打印
@@ -40,7 +43,7 @@ dependency-graph
 ```
  a
  |-b
-   |-c
+ | |-c
  |-d
    |-e
 ```
@@ -54,6 +57,7 @@ e -> d -> a
  c
  |-b
    |-a
+
  e
  |-d
    |-a
@@ -63,6 +67,7 @@ e -> d -> a
  a
  |-b
    |-c
+
  a
  |-d
    |-e

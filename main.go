@@ -39,6 +39,7 @@ dot: graphviz print, xxx | dot -Tsvg -o test.svg
 	exPre = make(map[string]bool)
 	flag.Var(&exPre, "expre", "exclude package, prefix match")
 	list := flag.Bool("list", false, "filter the package in the 'list -m all' result")
+	fast := flag.Bool("fast", false, "fast model, ")
 
 	flag.Parse()
 	graphStr := graph()
@@ -47,7 +48,13 @@ dot: graphviz print, xxx | dot -Tsvg -o test.svg
 		fmt.Println("no dependency")
 		return
 	}
-	tree := newTree(root)
+
+	var tree *pkgTreeNode
+	if *fast {
+		tree = newFastTree(root)
+	} else {
+		tree = newTree(root)
+	}
 
 	var actualDepend []*pkg
 	if *list {

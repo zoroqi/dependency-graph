@@ -34,7 +34,6 @@ func newTree(pkg *pkg) *pkgTreeNode {
 	stack := make([]*stackNode, 0, 10)
 
 	stackMap := make(map[string]bool)
-	nodeMap := make(map[string]*pkgTreeNode)
 
 	push := func(l *stackNode) {
 		stack = append(stack, l)
@@ -68,15 +67,6 @@ func newTree(pkg *pkg) *pkgTreeNode {
 
 	push2 := func(tmp *stackNode) {
 		n := newNode(tmp.pkg.dep[tmp.index])
-		//if nn, exist := nodeMap[tmp.pkg.dep[tmp.index].String()]; exist {
-		//	n.dep = nn.dep
-		//	n.parent = tmp.node
-		//	n.already = true
-		//	tmp.node.dep = append(tmp.node.dep, n)
-		//	tmp.index++
-		//	return
-		//}
-
 		n.parent = tmp.node
 		if stackMap[tmp.pkg.dep[tmp.index].String()] {
 			n.circular = true
@@ -88,7 +78,6 @@ func newTree(pkg *pkg) *pkgTreeNode {
 			})
 		}
 		tmp.node.dep = append(tmp.node.dep, n)
-		nodeMap[tmp.pkg.dep[tmp.index].String()] = n
 		tmp.index++
 	}
 
@@ -317,4 +306,84 @@ func dfs(node *pkgTreeNode, level int, handler func(level int, node *pkgTreeNode
 	for _, v := range node.dep {
 		dfs(v, level+1, handler)
 	}
+}
+
+
+func newFastTree(pkg *pkg) *pkgTreeNode {
+	stack := make([]*stackNode, 0, 10)
+
+	stackMap := make(map[string]bool)
+	nodeMap := make(map[string]*pkgTreeNode)
+
+	push := func(l *stackNode) {
+		stack = append(stack, l)
+		stackMap[l.pkg.String()] = true
+	}
+
+	pop := func() *stackNode {
+		if len(stack) < 0 {
+			return nil
+		}
+		r := stack[len(stack)-1]
+		stackMap[r.pkg.String()] = false
+		stack = stack[0 : len(stack)-1]
+		return r
+	}
+
+	top := func() *stackNode {
+		if len(stack) == 0 {
+			return nil
+		}
+		return stack[len(stack)-1]
+	}
+
+	push(&stackNode{
+		pkg:   pkg,
+		index: 0,
+		node:  newNode(pkg),
+	})
+
+	root := top().node
+
+	push2 := func(tmp *stackNode) {
+		n := newNode(tmp.pkg.dep[tmp.index])
+		if nn, exist := nodeMap[tmp.pkg.dep[tmp.index].String()]; exist {
+			n.dep = nn.dep
+			n.parent = tmp.node
+			n.already = true
+			tmp.node.dep = append(tmp.node.dep, n)
+			tmp.index++
+			return
+		}
+		n.parent = tmp.node
+		if stackMap[tmp.pkg.dep[tmp.index].String()] {
+			n.circular = true
+		} else {
+			push(&stackNode{
+				pkg:   tmp.pkg.dep[tmp.index],
+				index: 0,
+				node:  n,
+			})
+		}
+		tmp.node.dep = append(tmp.node.dep, n)
+		nodeMap[tmp.pkg.dep[tmp.index].String()] = n
+		tmp.index++
+	}
+
+	for tmp := top(); tmp != nil; tmp = top() {
+		if tmp.index == 0 {
+			if len(tmp.pkg.dep) == 0 {
+				pop()
+			} else {
+				push2(tmp)
+			}
+		} else {
+			if tmp.index < len(tmp.pkg.dep) {
+				push2(tmp)
+			} else {
+				pop()
+			}
+		}
+	}
+	return root
 }
