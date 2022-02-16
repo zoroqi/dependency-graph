@@ -47,6 +47,7 @@ dot: graphviz print, xxx | dot -Tsvg -o test.svg
 		fmt.Println("no dependency")
 		return
 	}
+
 	tree := newTree(root)
 
 	var actualDepend []*pkg
