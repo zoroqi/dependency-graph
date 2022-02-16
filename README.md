@@ -30,12 +30,8 @@ dependency-graph
     	rt: reverse tree print
     	wt: whole tree print
     	dot: graphviz print, `xxx | dot -Tsvg -o test.svg` 
-
   -s string
-    	search pkg name, 只打印固定包
-  -fast 
-        fast mode, Reduce duplicate pkg to solve the problem of too large dependency and unable to output. P.S. #5
-           进行快速树构建, 可以解决依赖过大导致无法输出的问题. 但输出可能会出现部分错误. 详见 #5 
+    	search pkg name, 检索特定的包
 ```
 
 打印
@@ -75,8 +71,8 @@ e -> d -> a
 * dot
 ```
 digraph godeps {
-0 [label="github.com/oliver006/redis_exporter@" style="filled"]
-1 [label="cloud.google.com/go@v0.34.0" style="filled"]
+0 [label="a" style="filled"]
+1 [label="b" style="filled"]
 0 -> 1
 }
 ```
