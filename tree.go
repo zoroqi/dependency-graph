@@ -280,6 +280,7 @@ func dotString(actualDepend []*pkg) stringHandler {
 		if first {
 			first = false
 			sb.WriteString("digraph godeps {\n")
+			sb.WriteString("rankdir = LR\n")
 		}
 		tmp := node
 		for tmp.parent != nil {
