@@ -253,7 +253,7 @@ func treeString(root *pkgTreeNode, level int, match filterHandler, sh stringHand
 }
 
 func dotString(actualDepend []*pkg) stringHandler {
-	first := true
+
 	depend := make(map[string]bool)
 	for _, r := range actualDepend {
 		depend[newNode(r).String()] = true
@@ -277,11 +277,6 @@ func dotString(actualDepend []*pkg) stringHandler {
 
 	repeat := make(map[string]bool)
 	return func(level int, node *pkgTreeNode, sb io.StringWriter) {
-		if first {
-			first = false
-			sb.WriteString("digraph godeps {\n")
-			sb.WriteString("rankdir = LR\n")
-		}
 		tmp := node
 		for tmp.parent != nil {
 			nodeStmt(tmp, sb)

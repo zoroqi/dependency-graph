@@ -57,6 +57,7 @@ dot: graphviz print, xxx | dot -Tsvg -o test.svg
 	}
 
 	match := compoundedMatch(buildMath(*s, *level, exPkg, exPre, actualDepend)...)
+	before, after := "", ""
 
 	var sh stringHandler
 	switch *p {
@@ -70,13 +71,21 @@ dot: graphviz print, xxx | dot -Tsvg -o test.svg
 		str := listall()
 		actualDepend = parseListAll(str)
 		sh = dotString(actualDepend)
+		before = "digraph godeps {\nrankdir = LR\n"
+		after = "}"
 	default:
 		sh = levelString
 	}
 	out := os.Stdout
+
+	if before != "" {
+		fmt.Fprint(out, before)
+	}
+	
 	treeString(tree, 0, match, sh, out)
-	if *p == "dot" {
-		out.WriteString("}")
+
+	if after != "" {
+		fmt.Fprint(out, after)
 	}
 }
 
