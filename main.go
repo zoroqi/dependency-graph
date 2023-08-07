@@ -56,7 +56,7 @@ dot: graphviz print, xxx | dot -Tsvg -o test.svg
 		actualDepend = parseListAll(str)
 	}
 
-	match := compoundedMatch(buildMath(*s, *level, exPkg, exPre, actualDepend)...)
+	match := compoundedMatch(buildMatch(*s, *level, exPkg, exPre, actualDepend)...)
 	before, after := "", ""
 
 	var sh stringHandler
@@ -66,7 +66,7 @@ dot: graphviz print, xxx | dot -Tsvg -o test.svg
 	case "rl":
 		sh = reverseLineString
 	case "wt":
-		sh = wholeLevelString(compoundedMatch(buildMath("", *level, exPkg, exPre, actualDepend)...))
+		sh = wholeLevelString(compoundedMatch(buildMatch("", *level, exPkg, exPre, actualDepend)...))
 	case "dot":
 		str := listall()
 		actualDepend = parseListAll(str)
@@ -89,7 +89,7 @@ dot: graphviz print, xxx | dot -Tsvg -o test.svg
 	}
 }
 
-func buildMath(s string, level int, exPkg exclude, exPre exclude, list []*pkg) []filterHandler {
+func buildMatch(s string, level int, exPkg exclude, exPre exclude, list []*pkg) []filterHandler {
 	matches := make([]filterHandler, 0)
 	if strings.TrimSpace(s) != "" {
 		matches = append(matches, searchPackage(strings.TrimSpace(s)))
