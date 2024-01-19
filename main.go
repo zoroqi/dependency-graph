@@ -28,7 +28,8 @@ func main() {
 rl: reverse line print
 rt: reverse tree print
 wt: whole tree print
-dot: graphviz print, xxx | dot -Tsvg -o test.svg 
+dot: graphviz print, xxx | dot -Tsvg -o test.svg
+mermaid: mermaid print
 `)
 	s := flag.String("s", "", "search pkg name")
 	level := flag.Int("l", 0, "max level")
@@ -73,6 +74,12 @@ dot: graphviz print, xxx | dot -Tsvg -o test.svg
 		sh = dotString(actualDepend)
 		before = "digraph godeps {\nrankdir = LR\n"
 		after = "}"
+	case "mermaid":
+		str := listall()
+		actualDepend = parseListAll(str)
+		sh = mermaidString(actualDepend)
+		before = "flowchart LR\n"
+		after = "\tclassDef red stroke:#f00\n"
 	default:
 		sh = levelString
 	}
@@ -81,7 +88,7 @@ dot: graphviz print, xxx | dot -Tsvg -o test.svg
 	if before != "" {
 		fmt.Fprint(out, before)
 	}
-	
+
 	treeString(tree, 0, match, sh, out)
 
 	if after != "" {
@@ -211,7 +218,7 @@ func graph() string {
 	cmd := exec.Command("go", "mod", "graph")
 	resultBytes, err := cmd.Output()
 	if err != nil {
-		fmt.Println(err)
+		print("execute go mod graph error: ", err)
 		os.Exit(1)
 	}
 	return string(resultBytes)
@@ -224,9 +231,9 @@ func listall() string {
 		os.Exit(1)
 	}
 	cmd := exec.Command("go", "list", "-m", "all")
-	resultBytes, err := cmd.Output()
+	resultBytes, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Println(err)
+		print("execute go list -m all error: ", err)
 		os.Exit(1)
 	}
 	return string(resultBytes)

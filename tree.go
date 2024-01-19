@@ -183,16 +183,16 @@ func compoundedMatch(filters ...filterHandler) filterHandler {
 	}
 }
 
-// a
-// |-b
-// 	 |-c
+// - a
+// - |-b
+// -   |-c
 func levelString(level int, n *pkgTreeNode, sb io.StringWriter) {
 	sb.WriteString(fmt.Sprintf("%s-%s%s\n", levelStr(level), n.String(), n.FlagString()))
 }
 
-// c
-// |-b
-//   |-a
+// - c
+// - |-b
+// -   |-a
 func reverseLevelString(level int, n *pkgTreeNode, sb io.StringWriter) {
 	p := n
 	h := 0
@@ -220,12 +220,13 @@ func reverseLineString(level int, n *pkgTreeNode, sb io.StringWriter) {
 	sb.WriteString("\n")
 }
 
-// a
-// |-b
-// 	 |-c
-// a
-// |-d
-// 	 |-e
+// - a
+// - |-b
+// -   |-c
+//
+// - a
+// - |-d
+// -   |-e
 func wholeLevelString(match filterHandler) stringHandler {
 	return func(level int, node *pkgTreeNode, sb io.StringWriter) {
 		sbParent := ""
@@ -284,6 +285,47 @@ func dotString(actualDepend []*pkg) stringHandler {
 			i := index[tmp.String()]
 			pi := index[tmp.parent.String()]
 			ss := fmt.Sprintf("%d -> %d;\n", pi, i)
+			if !repeat[ss] {
+				sb.WriteString(ss)
+				repeat[ss] = true
+			}
+			tmp = tmp.parent
+		}
+	}
+}
+
+func mermaidString(actualDepend []*pkg) stringHandler {
+
+	depend := make(map[string]bool)
+	for _, r := range actualDepend {
+		depend[newNode(r).String()] = true
+	}
+
+	increment := -1
+	index := make(map[string]int)
+	nodeStmt := func(node *pkgTreeNode, sb io.StringWriter) {
+		i, exist := index[node.String()]
+		if !exist {
+			increment++
+			i = increment
+			index[node.String()] = i
+			if depend[node.String()] {
+				sb.WriteString(fmt.Sprintf("\tid%d(%s):::red\n", i, node.String()))
+			} else {
+				sb.WriteString(fmt.Sprintf("\tid%d(%s)\n", i, node.String()))
+			}
+		}
+	}
+
+	repeat := make(map[string]bool)
+	return func(level int, node *pkgTreeNode, sb io.StringWriter) {
+		tmp := node
+		for tmp.parent != nil {
+			nodeStmt(tmp, sb)
+			nodeStmt(tmp.parent, sb)
+			i := index[tmp.String()]
+			pi := index[tmp.parent.String()]
+			ss := fmt.Sprintf("\tid%d-->id%d\n", pi, i)
 			if !repeat[ss] {
 				sb.WriteString(ss)
 				repeat[ss] = true
